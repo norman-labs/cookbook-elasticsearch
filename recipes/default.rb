@@ -11,6 +11,7 @@ include_recipe "ark"
 #
 group node.elasticsearch[:user] do
   action :create
+  system true
 end
 
 user node.elasticsearch[:user] do
@@ -20,6 +21,7 @@ user node.elasticsearch[:user] do
   gid     node.elasticsearch[:user]
   supports :manage_home => false
   action  :create
+  system true
 end
 
 # FIX: Work around the fact that Chef creates the directory even for `manage_home: false`
@@ -81,13 +83,14 @@ ark "elasticsearch" do
   prefix_home   ark_prefix_home
 
   notifies :start,   'service[elasticsearch]'
-  notifies :restart, 'service[elasticsearch]'
+  notifies :restart, 'service[elasticsearch]' unless node.elasticsearch[:skip_restart]
 
   not_if do
     link   = "#{node.elasticsearch[:dir]}/elasticsearch"
     target = "#{node.elasticsearch[:dir]}/elasticsearch-#{node.elasticsearch[:version]}"
+    binary = "#{target}/bin/elasticsearch"
 
-    ::File.directory?(link) && ::File.symlink?(link) && ::File.readlink(link) == target
+    ::File.directory?(link) && ::File.symlink?(link) && ::File.readlink(link) == target && ::File.exists?(binary)
   end
 end
 
@@ -119,7 +122,7 @@ template "elasticsearch-env.sh" do
   source "elasticsearch-env.sh.erb"
   owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-  notifies :restart, 'service[elasticsearch]'
+  notifies :restart, 'service[elasticsearch]' unless node.elasticsearch[:skip_restart]
 end
 
 # Create ES config file
@@ -129,7 +132,7 @@ template "elasticsearch.yml" do
   source "elasticsearch.yml.erb"
   owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-  notifies :restart, 'service[elasticsearch]'
+  notifies :restart, 'service[elasticsearch]' unless node.elasticsearch[:skip_restart]
 end
 
 # Create ES logging file
@@ -139,5 +142,5 @@ template "logging.yml" do
   source "logging.yml.erb"
   owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-  notifies :restart, 'service[elasticsearch]'
+  notifies :restart, 'service[elasticsearch]' unless node.elasticsearch[:skip_restart]
 end

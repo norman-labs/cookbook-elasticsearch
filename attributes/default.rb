@@ -10,9 +10,10 @@ node.normal[:elasticsearch]  ||= {}
 node.normal[:elasticsearch]    = DeepMerge.merge(node.default[:elasticsearch].to_hash, node.normal[:elasticsearch].to_hash)
 node.normal[:elasticsearch]    = DeepMerge.merge(node.normal[:elasticsearch].to_hash, settings.to_hash)
 
+
 # === VERSION AND LOCATION
 #
-default.elasticsearch[:version]       = "0.90.3"
+default.elasticsearch[:version]       = "1.0.0"
 default.elasticsearch[:host]          = "http://download.elasticsearch.org"
 default.elasticsearch[:repository]    = "elasticsearch/elasticsearch"
 default.elasticsearch[:filename]      = "elasticsearch-#{node.elasticsearch[:version]}.tar.gz"
@@ -32,7 +33,7 @@ default.elasticsearch[:path][:conf] = "/usr/local/etc/elasticsearch"
 default.elasticsearch[:path][:data] = "/usr/local/var/data/elasticsearch"
 default.elasticsearch[:path][:logs] = "/usr/local/var/log/elasticsearch"
 
-default.elasticsearch[:pid_path]  = "/usr/local/var/run/elasticsearch"
+default.elasticsearch[:pid_path]  = "/usr/local/var/run"
 default.elasticsearch[:pid_file]  = "#{node.elasticsearch[:pid_path]}/#{node.elasticsearch[:node][:name].to_s.gsub(/\W/, '_')}.pid"
 
 # === MEMORY
@@ -43,12 +44,22 @@ default.elasticsearch[:pid_file]  = "#{node.elasticsearch[:pid_path]}/#{node.ela
 allocated_memory = "#{(node.memory.total.to_i * 0.6 ).floor / 1024}m"
 default.elasticsearch[:allocated_memory] = allocated_memory
 
+# === GARBAGE COLLECTION SETTINGS
+#
+default.elasticsearch[:gc_settings] =<<-CONFIG
+  -XX:+UseParNewGC
+  -XX:+UseConcMarkSweepGC
+  -XX:CMSInitiatingOccupancyFraction=75
+  -XX:+UseCMSInitiatingOccupancyOnly
+  -XX:+HeapDumpOnOutOfMemoryError
+CONFIG
+
 # === LIMITS
 #
 # By default, the `mlockall` is set to true: on weak machines and Vagrant boxes,
 # you may want to disable it.
 #
-default.elasticsearch[:bootstrap][:mlockall] = true
+default.elasticsearch[:bootstrap][:mlockall] = ( node.memory.total.to_i >= 1048576 ? true : false )
 default.elasticsearch[:limits][:memlock] = 'unlimited'
 default.elasticsearch[:limits][:nofile]  = '64000'
 
@@ -66,9 +77,25 @@ default.elasticsearch[:gateway][:expected_nodes] = 1
 
 default.elasticsearch[:thread_stack_size] = "256k"
 
+default.elasticsearch[:env_options] = ""
+
+# === OTHER SETTINGS
+#
+default.elasticsearch[:skip_restart] = false
+
+# === PORT
+#
+default.elasticsearch[:http][:port] = 9200
+
 # === CUSTOM CONFIGURATION
 #
 default.elasticsearch[:custom_config] = {}
+
+# === LOGGING
+#
+# See `attributes/logging.rb`
+#
+default.elasticsearch[:logging] = {}
 
 # --------------------------------------------------
 # NOTE: Setting the attributes for elasticsearch.yml
